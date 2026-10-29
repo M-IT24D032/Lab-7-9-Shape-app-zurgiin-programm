@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -22,6 +23,9 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         int penSize = 3;
         bool drawing = false;
         Point startPt, lastPt, curPt;
+
+        Stack<Bitmap> undoStack = new Stack<Bitmap>();
+        Stack<Bitmap> redoStack = new Stack<Bitmap>();
 
         public Form1()
         {
@@ -70,6 +74,15 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             AddTool(shape, "Сум", Tool.Arrow);
             AddTool(shape, "Адил хажуут гурвалжин", Tool.IsoTriangle);
 
+            // ---- Засварлах ----
+            var edit = new ToolStripMenuItem("Засварлах");
+            edit.DropDownItems.Add(Item("Буцаах",
+                Keys.Control | Keys.Z, (s, e) => Undo()));
+            edit.DropDownItems.Add(Item("Дахин хийх",
+                Keys.Control | Keys.Y, (s, e) => Redo()));
+            edit.DropDownItems.Add(Item("Цэвэрлэх",
+                Keys.Control | Keys.Delete, (s, e) => ClearCanvas()));
+
             var color = new ToolStripMenuItem("Өнгө");
             AddColor(color, "Хар", Color.Black);
             AddColor(color, "Улаан", Color.Red);
@@ -88,7 +101,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                 }));
 
             menuStrip1.Items.AddRange(
-                new ToolStripItem[] { file, tools, shape, color });
+                new ToolStripItem[] { file, tools, shape, edit, color });
         }
 
         ToolStripMenuItem Item(
@@ -123,6 +136,59 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         }
 
         // ================== ЗУРАГ ==================
+        void SaveUndoState()
+        {
+            if (bmp == null) return;
+
+            undoStack.Push((Bitmap)bmp.Clone());
+
+            foreach (var old in redoStack)
+                old.Dispose();
+            redoStack.Clear();
+        }
+
+        void RestoreBitmap(Bitmap saved)
+        {
+            if (bmp != null)
+                bmp.Dispose();
+
+            bmp = (Bitmap)saved.Clone();
+            pictureBox1.Image = bmp;
+            pictureBox1.Invalidate();
+        }
+
+        void Undo()
+        {
+            if (undoStack.Count == 0) return;
+
+            redoStack.Push((Bitmap)bmp.Clone());
+            Bitmap previous = undoStack.Pop();
+            RestoreBitmap(previous);
+            previous.Dispose();
+        }
+
+        void Redo()
+        {
+            if (redoStack.Count == 0) return;
+
+            undoStack.Push((Bitmap)bmp.Clone());
+            Bitmap next = redoStack.Pop();
+            RestoreBitmap(next);
+            next.Dispose();
+        }
+
+        void ClearCanvas()
+        {
+            if (bmp == null) return;
+
+            SaveUndoState();
+
+            using (var g = Graphics.FromImage(bmp))
+                g.Clear(Color.White);
+
+            pictureBox1.Invalidate();
+        }
+
         void NewCanvas()
         {
             int w = Math.Max(pictureBox1.Width, 100);
@@ -131,7 +197,13 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             if (bmp != null)
                 bmp.Dispose();
 
+            foreach (var old in undoStack) old.Dispose();
+            foreach (var old in redoStack) old.Dispose();
+            undoStack.Clear();
+            redoStack.Clear();
+
             bmp = new Bitmap(w, h);
+
             using (var g = Graphics.FromImage(bmp))
                 g.Clear(Color.White);
 
@@ -158,6 +230,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
 
             drawing = true;
             startPt = lastPt = curPt = e.Location;
+            SaveUndoState();
         }
 
         void PictureBox1_MouseMove(object sender, MouseEventArgs e)
@@ -203,7 +276,6 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             pictureBox1.Invalidate();
         }
 
-        // ================== ДҮРС ЗУРАХ ==================
         void DrawSelectedShape(Graphics g, Pen pen, Point p1, Point p2)
         {
             Rectangle r = GetRectangle(p1, p2);
@@ -213,33 +285,20 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                 case Tool.Line:
                     g.DrawLine(pen, p1, p2);
                     break;
-
                 case Tool.Rectangle:
                     g.DrawRectangle(pen, r);
                     break;
-
                 case Tool.Square:
-                    {
-                        int side = Math.Min(r.Width, r.Height);
-                        r.Width = side;
-                        r.Height = side;
-                        g.DrawRectangle(pen, r);
-                        break;
-                    }
-
+                    r.Width = r.Height = Math.Min(r.Width, r.Height);
+                    g.DrawRectangle(pen, r);
+                    break;
                 case Tool.Ellipse:
                     g.DrawEllipse(pen, r);
                     break;
-
                 case Tool.Circle:
-                    {
-                        int side = Math.Min(r.Width, r.Height);
-                        r.Width = side;
-                        r.Height = side;
-                        g.DrawEllipse(pen, r);
-                        break;
-                    }
-
+                    r.Width = r.Height = Math.Min(r.Width, r.Height);
+                    g.DrawEllipse(pen, r);
+                    break;
                 case Tool.RightTriangle:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left, r.Bottom),
@@ -247,7 +306,6 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         new Point(r.Right, r.Bottom)
                     });
                     break;
-
                 case Tool.IsoTriangle:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left + r.Width / 2, r.Top),
@@ -255,15 +313,12 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         new Point(r.Right, r.Bottom)
                     });
                     break;
-
                 case Tool.Pentagon:
                     g.DrawPolygon(pen, RegularPolygon(r, 5));
                     break;
-
                 case Tool.Hexagon:
                     g.DrawPolygon(pen, RegularPolygon(r, 6));
                     break;
-
                 case Tool.Rhombus:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left + r.Width / 2, r.Top),
@@ -272,7 +327,6 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         new Point(r.Left, r.Top + r.Height / 2)
                     });
                     break;
-
                 case Tool.Trapezoid:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left + r.Width / 4, r.Top),
@@ -281,7 +335,6 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         new Point(r.Left, r.Bottom)
                     });
                     break;
-
                 case Tool.Heart:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left + r.Width / 2, r.Bottom),
@@ -294,11 +347,9 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         new Point(r.Right, r.Top + r.Height / 3)
                     });
                     break;
-
                 case Tool.Star:
                     g.DrawPolygon(pen, StarPoints(r));
                     break;
-
                 case Tool.Arrow:
                     g.DrawPolygon(pen, new Point[] {
                         new Point(r.Left, r.Top + r.Height / 3),
@@ -318,15 +369,13 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             Point[] points = new Point[sides];
             double cx = r.Left + r.Width / 2.0;
             double cy = r.Top + r.Height / 2.0;
-            double rx = r.Width / 2.0;
-            double ry = r.Height / 2.0;
 
             for (int i = 0; i < sides; i++)
             {
                 double angle = -Math.PI / 2 + 2 * Math.PI * i / sides;
                 points[i] = new Point(
-                    (int)(cx + rx * Math.Cos(angle)),
-                    (int)(cy + ry * Math.Sin(angle)));
+                    (int)(cx + r.Width / 2.0 * Math.Cos(angle)),
+                    (int)(cy + r.Height / 2.0 * Math.Sin(angle)));
             }
 
             return points;
@@ -337,8 +386,6 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             Point[] points = new Point[10];
             double cx = r.Left + r.Width / 2.0;
             double cy = r.Top + r.Height / 2.0;
-            double outerX = r.Width / 2.0;
-            double outerY = r.Height / 2.0;
 
             for (int i = 0; i < 10; i++)
             {
@@ -346,8 +393,8 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                 double scale = i % 2 == 0 ? 1.0 : 0.42;
 
                 points[i] = new Point(
-                    (int)(cx + outerX * scale * Math.Cos(angle)),
-                    (int)(cy + outerY * scale * Math.Sin(angle)));
+                    (int)(cx + r.Width / 2.0 * scale * Math.Cos(angle)),
+                    (int)(cy + r.Height / 2.0 * scale * Math.Sin(angle)));
             }
 
             return points;
@@ -364,10 +411,8 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
 
         void PictureBox1_Paint(object sender, PaintEventArgs e)
         {
-            if (!drawing || bmp == null)
-                return;
-
-            if (tool == Tool.Pencil || tool == Tool.Eraser)
+            if (!drawing || bmp == null ||
+                tool == Tool.Pencil || tool == Tool.Eraser)
                 return;
 
             using (var pen = MakePen())
