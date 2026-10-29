@@ -83,6 +83,16 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             edit.DropDownItems.Add(Item("Цэвэрлэх",
                 Keys.Control | Keys.Delete, (s, e) => ClearCanvas()));
 
+            // ---- Хэмжээ (зураасны зузаан 1-12) ----
+            var size = new ToolStripMenuItem("Хэмжээ");
+            for (int n = 1; n <= 12; n++)
+            {
+                int v = n;
+                size.DropDownItems.Add(
+                    Item($"{v} px", Keys.None, (s, e) => SetSize(v)));
+            }
+
+            // ---- Өнгө ----
             var color = new ToolStripMenuItem("Өнгө");
             AddColor(color, "Хар", Color.Black);
             AddColor(color, "Улаан", Color.Red);
@@ -92,6 +102,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             AddColor(color, "Цэнхэр", Color.Blue);
             AddColor(color, "Нил ягаан", Color.Purple);
             AddColor(color, "Цагаан", Color.White);
+
             color.DropDownItems.Add(new ToolStripSeparator());
             color.DropDownItems.Add(Item("Бусад өнгө...",
                 Keys.None, (s, e) =>
@@ -100,8 +111,10 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
                         penColor = colorDialog1.Color;
                 }));
 
-            menuStrip1.Items.AddRange(
-                new ToolStripItem[] { file, tools, shape, edit, color });
+            menuStrip1.Items.AddRange(new ToolStripItem[]
+            {
+                file, tools, shape, edit, size, color
+            });
         }
 
         ToolStripMenuItem Item(
@@ -135,6 +148,12 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             parent.DropDownItems.Add(item);
         }
 
+        // ================== ХЭМЖЭЭ ==================
+        void SetSize(int value)
+        {
+            penSize = value;
+        }
+
         // ================== ЗУРАГ ==================
         void SaveUndoState()
         {
@@ -144,6 +163,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
 
             foreach (var old in redoStack)
                 old.Dispose();
+
             redoStack.Clear();
         }
 
@@ -159,7 +179,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
 
         void Undo()
         {
-            if (undoStack.Count == 0) return;
+            if (undoStack.Count == 0 || bmp == null) return;
 
             redoStack.Push((Bitmap)bmp.Clone());
             Bitmap previous = undoStack.Pop();
@@ -169,7 +189,7 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
 
         void Redo()
         {
-            if (redoStack.Count == 0) return;
+            if (redoStack.Count == 0 || bmp == null) return;
 
             undoStack.Push((Bitmap)bmp.Clone());
             Bitmap next = redoStack.Pop();
