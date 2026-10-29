@@ -1,11 +1,20 @@
 ﻿
+using System;
+using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Windows.Forms;
 
 namespace Lab_7_9_Shape_app_zurgiin_programm
 {
     public partial class Form1 : Form
     {
-        enum Tool { Pencil, Line, Rectangle, Ellipse, Eraser }
+        enum Tool
+        {
+            Pencil, Line, Rectangle, Ellipse, Eraser,
+            Square, RightTriangle, Pentagon, Circle,
+            Hexagon, Rhombus, Trapezoid, Heart, Star,
+            Arrow, IsoTriangle
+        }
 
         Bitmap bmp;
         Tool tool = Tool.Pencil;
@@ -22,10 +31,10 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             BuildMenu();
 
             Load += (s, e) => NewCanvas();
-
             pictureBox1.MouseDown += PictureBox1_MouseDown;
             pictureBox1.MouseMove += PictureBox1_MouseMove;
             pictureBox1.MouseUp += PictureBox1_MouseUp;
+            pictureBox1.Paint += PictureBox1_Paint;
         }
 
         // ================== ЦЭС ==================
@@ -33,28 +42,35 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         {
             menuStrip1.Items.Clear();
 
-            // Файл цэс
             var file = new ToolStripMenuItem("Файл");
-            file.DropDownItems.Add(Item(
-                "Шинэ", Keys.Control | Keys.N,
-                (s, e) => NewCanvas()));
-
+            file.DropDownItems.Add(Item("Шинэ",
+                Keys.Control | Keys.N, (s, e) => NewCanvas()));
             file.DropDownItems.Add(new ToolStripSeparator());
+            file.DropDownItems.Add(Item("Гарах",
+                Keys.Alt | Keys.F4, (s, e) => Close()));
 
-            file.DropDownItems.Add(Item(
-                "Гарах", Keys.Alt | Keys.F4,
-                (s, e) => Close()));
-
-            // Хэрэгсэл цэс — зөвхөн 3 хэрэгсэл
             var tools = new ToolStripMenuItem("Хэрэгсэл");
-
             AddTool(tools, "Харандаа", Tool.Pencil);
-            AddTool(tools, "Шулуун", Tool.Line);
+            AddTool(tools, "Шулуун зураас", Tool.Line);
             AddTool(tools, "Баллуур", Tool.Eraser);
 
-            // Өнгө цэс
-            var color = new ToolStripMenuItem("Өнгө");
+            // ---- Дүрс ----
+            var shape = new ToolStripMenuItem("Дүрс");
+            AddTool(shape, "Дөрвөлжин", Tool.Square);
+            AddTool(shape, "Гурвалжин", Tool.RightTriangle);
+            AddTool(shape, "Тэгш өнцөгт", Tool.Rectangle);
+            AddTool(shape, "5 өнцөгт", Tool.Pentagon);
+            AddTool(shape, "Эллипс", Tool.Ellipse);
+            AddTool(shape, "Тойрог", Tool.Circle);
+            AddTool(shape, "6 өнцөгт", Tool.Hexagon);
+            AddTool(shape, "Ромбо", Tool.Rhombus);
+            AddTool(shape, "Трапец", Tool.Trapezoid);
+            AddTool(shape, "Зүрх", Tool.Heart);
+            AddTool(shape, "Од", Tool.Star);
+            AddTool(shape, "Сум", Tool.Arrow);
+            AddTool(shape, "Адил хажуут гурвалжин", Tool.IsoTriangle);
 
+            var color = new ToolStripMenuItem("Өнгө");
             AddColor(color, "Хар", Color.Black);
             AddColor(color, "Улаан", Color.Red);
             AddColor(color, "Улбар шар", Color.Orange);
@@ -63,58 +79,47 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             AddColor(color, "Цэнхэр", Color.Blue);
             AddColor(color, "Нил ягаан", Color.Purple);
             AddColor(color, "Цагаан", Color.White);
-
             color.DropDownItems.Add(new ToolStripSeparator());
-
-            color.DropDownItems.Add(Item(
-                "Бусад өнгө...", Keys.None,
-                (s, e) =>
+            color.DropDownItems.Add(Item("Бусад өнгө...",
+                Keys.None, (s, e) =>
                 {
                     if (colorDialog1.ShowDialog() == DialogResult.OK)
                         penColor = colorDialog1.Color;
                 }));
 
-            menuStrip1.Items.AddRange(new ToolStripItem[]
-            {
-                file, tools, color
-            });
+            menuStrip1.Items.AddRange(
+                new ToolStripItem[] { file, tools, shape, color });
         }
 
         ToolStripMenuItem Item(
             string text, Keys shortcut, EventHandler click)
         {
-            var it = new ToolStripMenuItem(text);
-
+            var item = new ToolStripMenuItem(text);
             if (shortcut != Keys.None)
-                it.ShortcutKeys = shortcut;
-
-            it.Click += click;
-            return it;
+                item.ShortcutKeys = shortcut;
+            item.Click += click;
+            return item;
         }
 
-        // Хэрэгсэл сонгох
-        void AddTool(ToolStripMenuItem parent, string name, Tool t)
+        void AddTool(ToolStripMenuItem parent, string name, Tool selectedTool)
         {
-            parent.DropDownItems.Add(Item(
-                name, Keys.None,
-                (s, e) => tool = t));
+            var item = new ToolStripMenuItem(name);
+            item.Click += (s, e) => tool = selectedTool;
+            parent.DropDownItems.Add(item);
         }
 
-        // Өнгө сонгох
         void AddColor(ToolStripMenuItem parent, string name, Color c)
         {
             var icon = new Bitmap(16, 16);
-
             using (var g = Graphics.FromImage(icon))
             {
                 g.Clear(c);
                 g.DrawRectangle(Pens.Gray, 0, 0, 15, 15);
             }
 
-            var it = new ToolStripMenuItem(name, icon);
-            it.Click += (s, e) => penColor = c;
-
-            parent.DropDownItems.Add(it);
+            var item = new ToolStripMenuItem(name, icon);
+            item.Click += (s, e) => penColor = c;
+            parent.DropDownItems.Add(item);
         }
 
         // ================== ЗУРАГ ==================
@@ -123,52 +128,53 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             int w = Math.Max(pictureBox1.Width, 100);
             int h = Math.Max(pictureBox1.Height, 100);
 
-            bmp = new Bitmap(w, h);
+            if (bmp != null)
+                bmp.Dispose();
 
+            bmp = new Bitmap(w, h);
             using (var g = Graphics.FromImage(bmp))
                 g.Clear(Color.White);
 
             pictureBox1.Image = bmp;
+            pictureBox1.Invalidate();
         }
 
-        // ================== ЗУРААС ==================
         Pen MakePen()
         {
-            var p = tool == Tool.Eraser
+            var pen = tool == Tool.Eraser
                 ? new Pen(Color.White, penSize * 4)
                 : new Pen(penColor, penSize);
 
-            p.StartCap = p.EndCap = LineCap.Round;
-            p.LineJoin = LineJoin.Round;
-
-            return p;
+            pen.StartCap = LineCap.Round;
+            pen.EndCap = LineCap.Round;
+            pen.LineJoin = LineJoin.Round;
+            return pen;
         }
 
-        // Хулгана дарахад
         void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left)
+            if (e.Button != MouseButtons.Left || bmp == null)
                 return;
 
             drawing = true;
             startPt = lastPt = curPt = e.Location;
         }
 
-        // Хулгана хөдөлгөхөд
         void PictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!drawing)
+            if (!drawing || bmp == null)
                 return;
 
             curPt = e.Location;
 
             if (tool == Tool.Pencil || tool == Tool.Eraser)
             {
-                using var g = Graphics.FromImage(bmp);
-                using var pen = MakePen();
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.DrawLine(pen, lastPt, curPt);
+                using (var g = Graphics.FromImage(bmp))
+                using (var pen = MakePen())
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.DrawLine(pen, lastPt, curPt);
+                }
 
                 lastPt = curPt;
             }
@@ -176,25 +182,199 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             pictureBox1.Invalidate();
         }
 
-        // Хулгана тавихад
         void PictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
-            if (!drawing)
+            if (!drawing || bmp == null)
                 return;
 
-            drawing = false;
             curPt = e.Location;
 
-            if (tool == Tool.Line)
+            if (tool != Tool.Pencil && tool != Tool.Eraser)
             {
-                using var g = Graphics.FromImage(bmp);
-                using var pen = MakePen();
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.DrawLine(pen, startPt, curPt);
+                using (var g = Graphics.FromImage(bmp))
+                using (var pen = MakePen())
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    DrawSelectedShape(g, pen, startPt, curPt);
+                }
             }
 
+            drawing = false;
             pictureBox1.Invalidate();
+        }
+
+        // ================== ДҮРС ЗУРАХ ==================
+        void DrawSelectedShape(Graphics g, Pen pen, Point p1, Point p2)
+        {
+            Rectangle r = GetRectangle(p1, p2);
+
+            switch (tool)
+            {
+                case Tool.Line:
+                    g.DrawLine(pen, p1, p2);
+                    break;
+
+                case Tool.Rectangle:
+                    g.DrawRectangle(pen, r);
+                    break;
+
+                case Tool.Square:
+                    {
+                        int side = Math.Min(r.Width, r.Height);
+                        r.Width = side;
+                        r.Height = side;
+                        g.DrawRectangle(pen, r);
+                        break;
+                    }
+
+                case Tool.Ellipse:
+                    g.DrawEllipse(pen, r);
+                    break;
+
+                case Tool.Circle:
+                    {
+                        int side = Math.Min(r.Width, r.Height);
+                        r.Width = side;
+                        r.Height = side;
+                        g.DrawEllipse(pen, r);
+                        break;
+                    }
+
+                case Tool.RightTriangle:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left, r.Bottom),
+                        new Point(r.Left, r.Top),
+                        new Point(r.Right, r.Bottom)
+                    });
+                    break;
+
+                case Tool.IsoTriangle:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left + r.Width / 2, r.Top),
+                        new Point(r.Left, r.Bottom),
+                        new Point(r.Right, r.Bottom)
+                    });
+                    break;
+
+                case Tool.Pentagon:
+                    g.DrawPolygon(pen, RegularPolygon(r, 5));
+                    break;
+
+                case Tool.Hexagon:
+                    g.DrawPolygon(pen, RegularPolygon(r, 6));
+                    break;
+
+                case Tool.Rhombus:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left + r.Width / 2, r.Top),
+                        new Point(r.Right, r.Top + r.Height / 2),
+                        new Point(r.Left + r.Width / 2, r.Bottom),
+                        new Point(r.Left, r.Top + r.Height / 2)
+                    });
+                    break;
+
+                case Tool.Trapezoid:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left + r.Width / 4, r.Top),
+                        new Point(r.Right - r.Width / 4, r.Top),
+                        new Point(r.Right, r.Bottom),
+                        new Point(r.Left, r.Bottom)
+                    });
+                    break;
+
+                case Tool.Heart:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left + r.Width / 2, r.Bottom),
+                        new Point(r.Left, r.Top + r.Height / 3),
+                        new Point(r.Left + r.Width / 8, r.Top + r.Height / 8),
+                        new Point(r.Left + r.Width / 3, r.Top),
+                        new Point(r.Left + r.Width / 2, r.Top + r.Height / 4),
+                        new Point(r.Left + r.Width * 2 / 3, r.Top),
+                        new Point(r.Right - r.Width / 8, r.Top + r.Height / 8),
+                        new Point(r.Right, r.Top + r.Height / 3)
+                    });
+                    break;
+
+                case Tool.Star:
+                    g.DrawPolygon(pen, StarPoints(r));
+                    break;
+
+                case Tool.Arrow:
+                    g.DrawPolygon(pen, new Point[] {
+                        new Point(r.Left, r.Top + r.Height / 3),
+                        new Point(r.Left + r.Width * 2 / 3, r.Top + r.Height / 3),
+                        new Point(r.Left + r.Width * 2 / 3, r.Top),
+                        new Point(r.Right, r.Top + r.Height / 2),
+                        new Point(r.Left + r.Width * 2 / 3, r.Bottom),
+                        new Point(r.Left + r.Width * 2 / 3, r.Top + r.Height * 2 / 3),
+                        new Point(r.Left, r.Top + r.Height * 2 / 3)
+                    });
+                    break;
+            }
+        }
+
+        Point[] RegularPolygon(Rectangle r, int sides)
+        {
+            Point[] points = new Point[sides];
+            double cx = r.Left + r.Width / 2.0;
+            double cy = r.Top + r.Height / 2.0;
+            double rx = r.Width / 2.0;
+            double ry = r.Height / 2.0;
+
+            for (int i = 0; i < sides; i++)
+            {
+                double angle = -Math.PI / 2 + 2 * Math.PI * i / sides;
+                points[i] = new Point(
+                    (int)(cx + rx * Math.Cos(angle)),
+                    (int)(cy + ry * Math.Sin(angle)));
+            }
+
+            return points;
+        }
+
+        Point[] StarPoints(Rectangle r)
+        {
+            Point[] points = new Point[10];
+            double cx = r.Left + r.Width / 2.0;
+            double cy = r.Top + r.Height / 2.0;
+            double outerX = r.Width / 2.0;
+            double outerY = r.Height / 2.0;
+
+            for (int i = 0; i < 10; i++)
+            {
+                double angle = -Math.PI / 2 + i * Math.PI / 5;
+                double scale = i % 2 == 0 ? 1.0 : 0.42;
+
+                points[i] = new Point(
+                    (int)(cx + outerX * scale * Math.Cos(angle)),
+                    (int)(cy + outerY * scale * Math.Sin(angle)));
+            }
+
+            return points;
+        }
+
+        Rectangle GetRectangle(Point p1, Point p2)
+        {
+            return new Rectangle(
+                Math.Min(p1.X, p2.X),
+                Math.Min(p1.Y, p2.Y),
+                Math.Max(1, Math.Abs(p2.X - p1.X)),
+                Math.Max(1, Math.Abs(p2.Y - p1.Y)));
+        }
+
+        void PictureBox1_Paint(object sender, PaintEventArgs e)
+        {
+            if (!drawing || bmp == null)
+                return;
+
+            if (tool == Tool.Pencil || tool == Tool.Eraser)
+                return;
+
+            using (var pen = MakePen())
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                DrawSelectedShape(e.Graphics, pen, startPt, curPt);
+            }
         }
     }
 }
