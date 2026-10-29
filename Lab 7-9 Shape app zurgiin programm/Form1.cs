@@ -1,4 +1,5 @@
-﻿using System.Drawing.Drawing2D;
+﻿
+using System.Drawing.Drawing2D;
 
 namespace Lab_7_9_Shape_app_zurgiin_programm
 {
@@ -17,8 +18,11 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         {
             InitializeComponent();
             Text = "Mini Paint - Зураг зурах программ";
+
             BuildMenu();
+
             Load += (s, e) => NewCanvas();
+
             pictureBox1.MouseDown += PictureBox1_MouseDown;
             pictureBox1.MouseMove += PictureBox1_MouseMove;
             pictureBox1.MouseUp += PictureBox1_MouseUp;
@@ -29,12 +33,28 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         {
             menuStrip1.Items.Clear();
 
+            // Файл цэс
             var file = new ToolStripMenuItem("Файл");
-            file.DropDownItems.Add(Item("Шинэ", Keys.Control | Keys.N, (s, e) => NewCanvas()));
-            file.DropDownItems.Add(new ToolStripSeparator());
-            file.DropDownItems.Add(Item("Гарах", Keys.Alt | Keys.F4, (s, e) => Close()));
+            file.DropDownItems.Add(Item(
+                "Шинэ", Keys.Control | Keys.N,
+                (s, e) => NewCanvas()));
 
+            file.DropDownItems.Add(new ToolStripSeparator());
+
+            file.DropDownItems.Add(Item(
+                "Гарах", Keys.Alt | Keys.F4,
+                (s, e) => Close()));
+
+            // Хэрэгсэл цэс — зөвхөн 3 хэрэгсэл
+            var tools = new ToolStripMenuItem("Хэрэгсэл");
+
+            AddTool(tools, "Харандаа", Tool.Pencil);
+            AddTool(tools, "Шулуун", Tool.Line);
+            AddTool(tools, "Баллуур", Tool.Eraser);
+
+            // Өнгө цэс
             var color = new ToolStripMenuItem("Өнгө");
+
             AddColor(color, "Хар", Color.Black);
             AddColor(color, "Улаан", Color.Red);
             AddColor(color, "Улбар шар", Color.Orange);
@@ -43,34 +63,57 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
             AddColor(color, "Цэнхэр", Color.Blue);
             AddColor(color, "Нил ягаан", Color.Purple);
             AddColor(color, "Цагаан", Color.White);
-            color.DropDownItems.Add(new ToolStripSeparator());
-            color.DropDownItems.Add(Item("Бусад өнгө...", Keys.None, (s, e) =>
-            {
-                if (colorDialog1.ShowDialog() == DialogResult.OK)
-                    penColor = colorDialog1.Color;
-            }));
 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { file, color });
+            color.DropDownItems.Add(new ToolStripSeparator());
+
+            color.DropDownItems.Add(Item(
+                "Бусад өнгө...", Keys.None,
+                (s, e) =>
+                {
+                    if (colorDialog1.ShowDialog() == DialogResult.OK)
+                        penColor = colorDialog1.Color;
+                }));
+
+            menuStrip1.Items.AddRange(new ToolStripItem[]
+            {
+                file, tools, color
+            });
         }
 
-        ToolStripMenuItem Item(string text, Keys shortcut, EventHandler click)
+        ToolStripMenuItem Item(
+            string text, Keys shortcut, EventHandler click)
         {
             var it = new ToolStripMenuItem(text);
-            if (shortcut != Keys.None) it.ShortcutKeys = shortcut;
+
+            if (shortcut != Keys.None)
+                it.ShortcutKeys = shortcut;
+
             it.Click += click;
             return it;
         }
 
+        // Хэрэгсэл сонгох
+        void AddTool(ToolStripMenuItem parent, string name, Tool t)
+        {
+            parent.DropDownItems.Add(Item(
+                name, Keys.None,
+                (s, e) => tool = t));
+        }
+
+        // Өнгө сонгох
         void AddColor(ToolStripMenuItem parent, string name, Color c)
         {
             var icon = new Bitmap(16, 16);
+
             using (var g = Graphics.FromImage(icon))
             {
                 g.Clear(c);
                 g.DrawRectangle(Pens.Gray, 0, 0, 15, 15);
             }
+
             var it = new ToolStripMenuItem(name, icon);
             it.Click += (s, e) => penColor = c;
+
             parent.DropDownItems.Add(it);
         }
 
@@ -79,46 +122,79 @@ namespace Lab_7_9_Shape_app_zurgiin_programm
         {
             int w = Math.Max(pictureBox1.Width, 100);
             int h = Math.Max(pictureBox1.Height, 100);
+
             bmp = new Bitmap(w, h);
-            using (var g = Graphics.FromImage(bmp)) g.Clear(Color.White);
+
+            using (var g = Graphics.FromImage(bmp))
+                g.Clear(Color.White);
+
             pictureBox1.Image = bmp;
         }
 
+        // ================== ЗУРААС ==================
         Pen MakePen()
         {
             var p = tool == Tool.Eraser
                 ? new Pen(Color.White, penSize * 4)
                 : new Pen(penColor, penSize);
+
             p.StartCap = p.EndCap = LineCap.Round;
             p.LineJoin = LineJoin.Round;
+
             return p;
         }
 
+        // Хулгана дарахад
         void PictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left) return;
+            if (e.Button != MouseButtons.Left)
+                return;
+
             drawing = true;
             startPt = lastPt = curPt = e.Location;
         }
 
+        // Хулгана хөдөлгөхөд
         void PictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!drawing) return;
+            if (!drawing)
+                return;
+
             curPt = e.Location;
+
             if (tool == Tool.Pencil || tool == Tool.Eraser)
             {
                 using var g = Graphics.FromImage(bmp);
                 using var pen = MakePen();
+
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.DrawLine(pen, lastPt, curPt);
+
                 lastPt = curPt;
             }
+
             pictureBox1.Invalidate();
         }
 
+        // Хулгана тавихад
         void PictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
+            if (!drawing)
+                return;
+
             drawing = false;
+            curPt = e.Location;
+
+            if (tool == Tool.Line)
+            {
+                using var g = Graphics.FromImage(bmp);
+                using var pen = MakePen();
+
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.DrawLine(pen, startPt, curPt);
+            }
+
+            pictureBox1.Invalidate();
         }
     }
 }
