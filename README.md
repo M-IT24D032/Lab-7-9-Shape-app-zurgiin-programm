@@ -1,0 +1,1 @@
+# Lab 7-9 Shape app zurgiin programm
